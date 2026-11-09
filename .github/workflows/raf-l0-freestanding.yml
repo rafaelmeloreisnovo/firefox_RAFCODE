@@ -1,0 +1,46 @@
+name: RAFCODE L0 | independent freestanding object gate
+on:
+  pull_request:
+    paths:
+      - 'authorial/raf_l0/**'
+      - 'NOVOexport/001_PONTEIRO/FIREFOX_RAF_L0_V1/**'
+      - '.github/workflows/raf-l0-freestanding.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l0-abi-and-adversarial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Sparse source checkout only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            authorial/raf_l0
+            NOVOexport/001_PONTEIRO/FIREFOX_RAF_L0_V1
+            .github/workflows/raf-l0-freestanding.yml
+      - name: Check the exact producer HEAD
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed="$(git rev-parse HEAD)"
+          test "$observed" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - name: Run freestanding object and adversarial host gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          clang --version
+          sh authorial/raf_l0/verify.sh
+      - name: Scoped receipt without browser claims
+        if: always()
+        shell: bash
+        run: |
+          echo "source_sha=${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo 'scope=standalone_C11_objects_only' >> "$GITHUB_STEP_SUMMARY"
+          echo 'firefox_browser_build=NOT_RUN' >> "$GITHUB_STEP_SUMMARY"
+          echo 'device_e2e=NOT_RUN' >> "$GITHUB_STEP_SUMMARY"
+          echo 'claim_allowed=false' >> "$GITHUB_STEP_SUMMARY"
